@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/location_entry.dart';
 import '../services/background_service.dart';
@@ -19,7 +20,6 @@ enum LocationPermissionState {
 }
 
 class LocationProvider extends ChangeNotifier {
-
   LocationEntry? _current;
   final List<LocationEntry> _history = [];
   bool _isTracking = false;
@@ -170,7 +170,6 @@ class LocationProvider extends ChangeNotifier {
       _isTracking = false;
       notifyListeners();
     } else {
-
       if (Platform.isAndroid) {
         final notifStatus = await Permission.notification.status;
         log("Notification status: $notifStatus", name: "Location Provider");
@@ -190,7 +189,8 @@ class LocationProvider extends ChangeNotifier {
         }
 
         if (Platform.isIOS && !granted) {
-          log("iOS: proceeding without Always permission", name: "Location Provider");
+          log("iOS: proceeding without Always permission",
+              name: "Location Provider");
         }
       }
 
@@ -219,8 +219,10 @@ class LocationProvider extends ChangeNotifier {
     _fgStreamSub = LocationService.positionStream().listen(
       (pos) {
         log("iOS STREAM FIRED", name: "Location Provider");
-        log("Lat: ${pos.latitude}, Lng: ${pos.longitude}", name: "Location Provider");
-        log("Accuracy: ${pos.accuracy}, Speed: ${pos.speed}", name: "Location Provider");
+        log("Lat: ${pos.latitude}, Lng: ${pos.longitude}",
+            name: "Location Provider");
+        log("Accuracy: ${pos.accuracy}, Speed: ${pos.speed}",
+            name: "Location Provider");
         log("Timestamp: ${pos.timestamp}", name: "Location Provider");
         final entry = LocationEntry(
           latitude: pos.latitude,
@@ -255,11 +257,16 @@ class LocationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _addToHistory(LocationEntry entry) {
+  void _addToHistory(LocationEntry entry) async {
     _history.add(entry);
     if (_history.length > 100) {
       _history.removeRange(0, _history.length - 100);
     }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'lt_history',
+      LocationEntry.encodeList(_history),
+    );
   }
 
   @override
